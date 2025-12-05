@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files（大数据文件不上传到GitHub）
+*.pt
+*.pth
+*.bin
+*.tar.gz
+*.zip
+data/
+features/
+models/
+checkpoints/
+
+# Audio files
+*.wav
+*.mp3
+*.flac
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+temp/
