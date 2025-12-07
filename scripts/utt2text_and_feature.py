@@ -85,9 +85,9 @@ def main(args):
 
     # load Whisper encoder
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    processor = AutoProcessor.from_pretrained("openai/whisper-small")
+    processor = AutoProcessor.from_pretrained("openai/whisper-base")
     whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        "openai/whisper-small"
+        "openai/whisper-base"
     ).to(device)
     whisper_model.eval()
 
