@@ -13,8 +13,8 @@ This project implements a simplified TASTE model. It leverages a cross-attention
 
 1. **Install Dependencies:**
    Ensure you have Python 3.8+ and PyTorch installed.
-   ```bash
-   pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
 
 ```
 
@@ -26,9 +26,9 @@ Download the **CosyVoice-300M** model and place it in the `models/` directory:
 
 ---
 
-##3. Data Preparation PipelinePlease follow the steps below to reproduce the data processing, training, and evaluation.
+## 3. Data Preparation PipelinePlease follow the steps below to reproduce the data processing, training, and evaluation.
 
-###Step 1: Prepare Training Data (train-clean-100)**1.1 Generate JSONL Index:**
+### Step 1: Prepare Training Data (train-clean-100)**1.1 Generate JSONL Index:**
 Scan the raw LibriSpeech data and generate a file list.
 
 ```bash
@@ -61,7 +61,7 @@ python scripts/run_s3.py
 
 ---
 
-###Step 2: Prepare Test Data (test-clean)To evaluate on the test set, we process `test-clean` using the same pipeline but save to different filenames.
+### Step 2: Prepare Test Data (test-clean)To evaluate on the test set, we process `test-clean` using the same pipeline but save to different filenames.
 
 **2.1 Generate Test JSONL:**
 
@@ -92,7 +92,7 @@ python scripts/run_s3.py \
 
 ---
 
-##4. TrainingTrain the alignment aggregator. The script defaults to `BATCH_SIZE=1` for memory efficiency.
+## 4. TrainingTrain the alignment aggregator. The script defaults to `BATCH_SIZE=1` for memory efficiency.
 
 ```bash
 python scripts/train.py
@@ -104,7 +104,7 @@ python scripts/train.py
 
 ---
 
-##5. EvaluationRun the test script to calculate the Top-1 Accuracy on the `test-clean` dataset.
+## 5. EvaluationRun the test script to calculate the Top-1 Accuracy on the `test-clean` dataset.
 
 **Important:** Before running, please open `scripts/test.py` and modify the `CKPT_PATH` variable to point to your best checkpoint file.
 
