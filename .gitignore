@@ -44,3 +44,6 @@ logs/
 # Temp
 tmp/
 temp/
+
+checkpoints/
+origin_data/

@@ -27,10 +27,14 @@ except Exception:
 #  Config
 # ======================
 
-UTT2_S3_PATH = "YOUR_UTT2_S3_PATH"
-UTT2_TEXT_EMB_PATH = "YOUR_UTT2_TEXT_EMB_PATH"
-UTT2_WHISPER_PATH = "YOUR_UTT2_WHISPER_PATH"
-COSYVOICE_MODEL_DIR = "YOUR_COSYVOICE_MODEL_DIR"
+# 1. S3 Token (Label)
+UTT2_S3_PATH = r"D:\EduKillers\25Second\DeepLearning\Assignment2\features\utt2speech_token.pt"        
+# 2. Text Embedding (Input A)
+UTT2_TEXT_EMB_PATH = r"D:\EduKillers\25Second\DeepLearning\Assignment2\features\utt2text.pt"   
+# 3. Whisper Features (Input B)
+UTT2_WHISPER_PATH = r"D:\EduKillers\25Second\DeepLearning\Assignment2\features\utt2whisper.pt" 
+# 4. Pre-trained CosyVoice Model Directory
+COSYVOICE_MODEL_DIR = r"D:\EduKillers\25Second\DeepLearning\Assignment2\models\CosyVoice-300M"
 
 S3_PAD_ID = 0
 S3_VOCAB_SIZE = 4096

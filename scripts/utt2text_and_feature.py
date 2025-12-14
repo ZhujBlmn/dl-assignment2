@@ -80,11 +80,11 @@ def main(args):
 
     # load Whisper encoder
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Loading Whisper Large V3 to {device}...")
+    print(f"Loading Whisper Base to {device}...")
     
-    processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
+    processor = AutoProcessor.from_pretrained("openai/whisper-base")
     whisper_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        "openai/whisper-large-v3"
+        "openai/whisper-base"
     ).to(device)
     whisper_model.eval()
 
@@ -92,8 +92,8 @@ def main(args):
     all_data = load_jsonl(args.jsonl)
     total_len = len(all_data)
     
-    # 【优化1】只取前 10%
-    subset_size = int(total_len * 0.1)
+    # 【优化1】只取前 1000
+    subset_size = int(1000)
     if subset_size == 0: subset_size = 1 # 防止数据太少报错
     data = all_data[:subset_size]
     
