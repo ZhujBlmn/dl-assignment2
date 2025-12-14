@@ -44,7 +44,6 @@ COSYVOICE_MODEL_DIR = r"D:\EduKillers\25Second\DeepLearning\Assignment2\models\C
 S3_PAD_ID = 0
 S3_VOCAB_SIZE = 4096
 
-# 【关键修改】Batch Size 改为 1 以防显存溢出
 BATCH_SIZE = 1
 
 LR = 1e-4
@@ -113,7 +112,6 @@ class CosyVoiceS3Model(nn.Module):
         self.s3_vocab_size = s3_vocab_size
         self.s3_vocab_size_with_eos = s3_vocab_size + 1 
         
-        # 自动检测 LLM 维度
         if hasattr(self.llm, "output_size"):
              llm_dim = self.llm.output_size()
         elif hasattr(self.llm, "d_model"):
@@ -303,7 +301,7 @@ def load_samples():
     
     keys = []
     if len(intersection) == 0:
-        print("⚠️ [WARNING] 0 samples matched! Attempting CLEANED keys matching...")
+        print("[WARNING] 0 samples matched! Attempting CLEANED keys matching...")
         def clean_key(k):
             k = str(k).replace('\\', '/')
             return k.split('/')[-1].split('.')[0]
@@ -314,7 +312,7 @@ def load_samples():
         
         clean_intersection = set(s3_clean.keys()) & set(text_clean.keys()) & set(whisper_clean.keys())
         if len(clean_intersection) > 0:
-            print(f"✅ Cleaned Keys Matched: {len(clean_intersection)}")
+            print(f"Cleaned Keys Matched: {len(clean_intersection)}")
             for clean_k in clean_intersection:
                 keys.append({
                     'clean_id': clean_k,
@@ -358,7 +356,6 @@ def load_samples():
 #  Train / Eval / Predict
 # ======================
 
-# 【修改】增加 scaler 参数
 def train_one_epoch(model, dataloader, optimizer, device, scaler):
     model.train()
     total_loss = 0.0
@@ -379,7 +376,6 @@ def train_one_epoch(model, dataloader, optimizer, device, scaler):
 
         optimizer.zero_grad()
 
-        # 【新增】混合精度上下文
         with autocast():
             loss, _, _ = model(
                 text_emb=text_emb,
@@ -390,7 +386,7 @@ def train_one_epoch(model, dataloader, optimizer, device, scaler):
                 s3_targets=s3_targets,
             )
 
-        # 【新增】Scaler 反向传播
+        # Scaler backward
         scaler.scale(loss).backward()
         
         scaler.unscale_(optimizer)
@@ -399,9 +395,8 @@ def train_one_epoch(model, dataloader, optimizer, device, scaler):
         scaler.step(optimizer)
         scaler.update()
 
-        # 【记录】
         loss_val = loss.item()
-        step_losses.append(loss_val)  # 记录这一步的 loss
+        step_losses.append(loss_val)  
 
         num_valid = (s3_targets != S3_PAD_ID).sum().item()
         total_loss += loss.item() * num_valid 
@@ -410,7 +405,7 @@ def train_one_epoch(model, dataloader, optimizer, device, scaler):
         pbar.set_postfix({'loss': loss.item()})
 
     avg_loss = total_loss / max(1, total_tokens)
-    return avg_loss, step_losses  # 【修改】返回平均值和详细列表
+    return avg_loss, step_losses  
 
 
 @torch.no_grad()
@@ -420,7 +415,6 @@ def eval_one_epoch(model, dataloader, device):
     total_tokens = 0
     total_correct = 0
     
-    # 只需要打印一次预览
     preview_done = False
 
     for batch in tqdm(dataloader, desc="Evaluating"):
@@ -434,7 +428,6 @@ def eval_one_epoch(model, dataloader, device):
         s3_targets = batch["s3_targets"].to(device)
 
         with autocast():
-            # 获取 logits
             loss, logits, _ = model(
                 text_emb=text_emb,
                 speech_last=speech_last,
@@ -444,61 +437,43 @@ def eval_one_epoch(model, dataloader, device):
                 s3_targets=s3_targets,
             )
 
-        # ================== 【开始】关键修复部分 ==================
         
-        # 1. 获取预测结果 [Batch, Total_Len]
         preds = torch.argmax(logits, dim=-1)
-        
-        # 2. 我们需要手动构建一个和 preds 形状一样的目标 tensor (lm_target)
-        # 这段逻辑必须和 model.forward 里的逻辑完全一致，才能对齐
+
         B = preds.size(0)
         total_len = preds.size(1)
-        
-        # 初始化全是 IGNORE_ID (-100)
+
         lm_target_aligned = torch.full((B, total_len), IGNORE_ID, dtype=torch.long, device=device)
-        
-        # 计算长度
+
         text_lens = text_mask.sum(dim=1).to(dtype=torch.int32)
         s3_lens = (s3_targets != S3_PAD_ID).sum(dim=1).to(dtype=torch.int32)
-        
-        # 填充 valid 的标签到正确位置
+
         for i in range(B):
             slen = s3_lens[i].item()
             if slen > 0:
-                # 起始位置 = 1(SOS) + text_len + 1(TaskID) - 1 (索引从0开始修正) -> 实际上是 1 + text_lens
-                # 参照 forward 里的逻辑： start_predict_idx = 1 + text_lens[i]
                 start_idx = 1 + text_lens[i].item()
                 
-                # 确保不越界
                 valid_len = min(slen, total_len - start_idx)
                 if valid_len > 0:
                     lm_target_aligned[i, start_idx : start_idx + valid_len] = s3_targets[i, :valid_len]
-                    
-                    # (可选) 如果 forward 里也预测了 EOS，这里也可以加上
-                    # if start_idx + valid_len < total_len:
-                    #     lm_target_aligned[i, start_idx + valid_len] = model.s3_vocab_size
 
-        # 3. 计算 Accuracy
-        # 只比较那些不是 IGNORE_ID 的位置
+
         valid_mask = (lm_target_aligned != IGNORE_ID)
         correct = (preds == lm_target_aligned) & valid_mask
         
         total_correct += correct.sum().item()
-        num_valid_tokens = valid_mask.sum().item() # 使用对齐后的有效token数
-        
-        # ================== 【结束】关键修复部分 ==================
+        num_valid_tokens = valid_mask.sum().item() 
 
         total_loss += loss.item() * num_valid_tokens
         total_tokens += num_valid_tokens
 
         if not preview_done:
-            # 找到第一个非空的样本看看
             idx = 0
             valid_indices = torch.where(lm_target_aligned[idx] != IGNORE_ID)[0]
             if len(valid_indices) > 0:
                 start = valid_indices[0].item()
                 end = valid_indices[-1].item() + 1
-                # 只打印有效片段的前10个
+
                 print(f"\n[Preview] Target (Aligned): {lm_target_aligned[idx, start:end][:10].tolist()}")
                 print(f"[Preview] Pred   (Aligned): {preds[idx, start:end][:10].tolist()}")
                 preview_done = True

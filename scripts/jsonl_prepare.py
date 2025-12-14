@@ -5,29 +5,26 @@ from pathlib import Path
 from tqdm import tqdm
 
 def prepare_jsonl(data_dir, output_jsonl):
-    """LibriSpeech数据Prepare"""
+    """LibriSpeech Prepare"""
     
     items = []
     data_path = Path(data_dir)
     
-    # 查找所有转录文件
     trans_files = list(data_path.rglob("*.trans.txt"))
-    print(f"找到 {len(trans_files)} 个转录文件")
+    print(f"Fine {len(trans_files)} file")
     
-    # 添加进度条
-    for trans_file in tqdm(trans_files, desc="处理转录文件"):
+
+    for trans_file in tqdm(trans_files, desc="Processing transcription files"):
         with open(trans_file, "r", encoding="utf-8") as fr:
             for line in fr:
                 line = line.strip()
                 if not line:
                     continue
-                
-                # 分割utterance_id和文本
+
                 parts = line.split(" ", 1)
                 if len(parts) == 2:
                     utterance_id, text = parts
                     
-                    # 直接在同一目录查找音频文件
                     audio_dir = trans_file.parent
                     for ext in ['.wav', '.flac']:
                         audio_path = audio_dir / f"{utterance_id}{ext}"
@@ -39,7 +36,6 @@ def prepare_jsonl(data_dir, output_jsonl):
                             })
                             break
     
-    # 保存结果
     with open(output_jsonl, "w", encoding="utf8") as fw:
         for item in items:
             fw.write(json.dumps(item, ensure_ascii=False) + "\n")

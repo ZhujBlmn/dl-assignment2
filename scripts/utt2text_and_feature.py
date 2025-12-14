@@ -65,8 +65,7 @@ def extract_whisper_encoder_feats(waveform, model, processor, device, max_durati
 
     hidden_states = enc_out.hidden_states  # list: [layer0, layer1, ..., last]
     mid_idx = len(hidden_states) // 2
-    
-    # 【优化2】转为 half (float16) 节省显存和内存
+
     mid_layer = hidden_states[mid_idx].detach().cpu().half().squeeze(0)   # (T, D)
     final_layer = hidden_states[-1].detach().cpu().half().squeeze(0)      # (T, D)
     
@@ -88,16 +87,16 @@ def main(args):
     ).to(device)
     whisper_model.eval()
 
-    # 1. 加载所有数据
+
     all_data = load_jsonl(args.jsonl)
     total_len = len(all_data)
     
-    # 【优化1】只取前 1000
+    # For testing, we can process a subset of the data
     subset_size = int(1000)
-    if subset_size == 0: subset_size = 1 # 防止数据太少报错
+    if subset_size == 0: subset_size = 1
     data = all_data[:subset_size]
     
-    print(f"⚠️ PROCESSING SUBSET: {len(data)} items (10% of {total_len})")
+    print(f"PROCESSING SUBSET: {len(data)} items (10% of {total_len})")
 
     utt2text_emb = {}
     utt2whisper_mid = {}
@@ -112,7 +111,6 @@ def main(args):
             text_token, text_token_len = cosy.frontend._extract_text_token(text)  # [1, L], [1]
             with torch.no_grad():
                 text_token = text_token.to(emb_layer.weight.device).long()
-                # 【优化2】转 float16
                 text_emb = emb_layer(text_token).squeeze(0).cpu().half()  # [L, D]
             utt2text_emb[audio_path] = text_emb
 
@@ -126,7 +124,6 @@ def main(args):
                 utt2whisper_mid[audio_path] = mid_feat
                 utt2whisper_final[audio_path] = final_feat
             
-            # 【优化3】手动垃圾回收，防止内存堆积
             if i % 100 == 0:
                 gc.collect()
                 if torch.cuda.is_available():
@@ -136,7 +133,6 @@ def main(args):
             print(f"Error processing {audio_path}: {e}")
             continue
 
-    # 检查输出目录
     os.makedirs(os.path.dirname(args.output_text), exist_ok=True)
     os.makedirs(os.path.dirname(args.output_whisper), exist_ok=True)
 
